@@ -23,7 +23,10 @@ func createRecords(lm *LogManager, start uint64, end uint64) {
 		end; i++ {
 		//一条记录包含两个信息，一个是字符串record 一个是数值i
 		rec := makeRecord(fmt.Sprintf("record%d", i), i)
-		lm.Append(rec)
+		_, err := lm.Append(rec)
+		if err != nil {
+			return
+		}
 	}
 }
 
