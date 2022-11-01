@@ -100,11 +100,12 @@ func (f *FileManager) Write(blk *BlockId, p *Page) (int, error) {
 	return n, nil
 }
 
-func (f *FileManager) size(file_name string) (uint64, error) {
+func (f *FileManager) Size(file_name string) (uint64, error) {
 	file, err := f.getFile(file_name)
 	if err != nil {
 		return 0, err
 	}
+	defer file.Close()
 
 	fi, err := file.Stat()
 	if err != nil {
@@ -112,11 +113,10 @@ func (f *FileManager) size(file_name string) (uint64, error) {
 	}
 
 	return uint64(fi.Size()) / f.block_size, nil
-
 }
 
 func (f *FileManager) Append(file_name string) (BlockId, error) {
-	new_block_num, err := f.size(file_name)
+	new_block_num, err := f.Size(file_name)
 	if err != nil {
 		return BlockId{}, err
 	}
