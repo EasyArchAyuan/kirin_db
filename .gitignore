@@ -1,0 +1,5 @@
+/.idea/*.iml
+/.idea/*.xml
+!/file_manager/file_test/
+!/.gitignore
+/.idea/.gitignore
