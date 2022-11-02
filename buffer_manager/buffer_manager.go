@@ -13,22 +13,25 @@ const (
 )
 
 type BufferManager struct {
-	buffer_pool   []*Buffer  //多个buffer组成内存池
-	num_available uint32     //可用buffer数量
-	mu            sync.Mutex //互斥锁
+	buffer_pool   []*Buffer
+	num_available uint32
+	mu            sync.Mutex
 }
 
 func NewBufferManager(fm *fm.FileManager, lm *lm.LogManager, num_buffers uint32) *BufferManager {
-	buffer_manager := &BufferManager{num_available: num_buffers}
+	buffer_manager := &BufferManager{
+		num_available: num_buffers,
+	}
 	for i := uint32(0); i < num_buffers; i++ {
 		buffer := NewBuffer(fm, lm)
 		buffer_manager.buffer_pool = append(buffer_manager.buffer_pool, buffer)
 	}
+
 	return buffer_manager
 }
 
-// Available 当前可用缓存页面数量
 func (b *BufferManager) Available() uint32 {
+	//当前可用缓存页面数量
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.num_available
@@ -37,6 +40,7 @@ func (b *BufferManager) Available() uint32 {
 func (b *BufferManager) FlushAll(txnum int32) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	//将给定交易的读写数据全部写入磁盘
 	for _, buff := range b.buffer_pool {
 		if buff.ModifyingTx() == txnum {
 			buff.Flush()
@@ -49,16 +53,17 @@ func (b *BufferManager) Pin(blk *fm.BlockId) (*Buffer, error) {
 	defer b.mu.Unlock()
 
 	start := time.Now()
-	buffer := b.tryPin(blk)
-	//如果无法获得缓存页面，那么让调用者等待一段时间后再次尝试
-	for buffer != nil && !b.waitingTooLong(start) {
+	buff := b.tryPin(blk)
+	for buff == nil && b.waitingTooLong(start) == false {
+		//如果无法获得缓存页面，那么让调用者等待一段时间后再次尝试
 		time.Sleep(MAX_TIME * time.Second)
-		buffer = b.tryPin(blk)
-		if buffer == nil {
-			return nil, errors.New("no buffer available,careful for dead lock")
+		buff = b.tryPin(blk)
+		if buff == nil {
+			return nil, errors.New("No buffer available , cafule for dead lock")
 		}
 	}
-	return buffer, nil
+
+	return buff, nil
 }
 
 func (b *BufferManager) Unpin(buff *Buffer) {
@@ -69,53 +74,56 @@ func (b *BufferManager) Unpin(buff *Buffer) {
 		return
 	}
 
-	buff.UnPin()
+	buff.Unpin()
 	if !buff.IsPinned() {
-		b.num_available += 1
-		//todo: 唤醒所有等待它的线程,notifyAll()
+		b.num_available = b.num_available + 1
+		//todo: notifyAll() //唤醒所有等待它的线程,等到设计并发管理器时再做处理
 	}
 }
 
-// waitingTooLong 超时机制,解决死锁,超过3s判断
 func (b *BufferManager) waitingTooLong(start time.Time) bool {
-	seconds := time.Since(start).Seconds()
-	if seconds >= MAX_TIME {
+	elapsed := time.Since(start).Seconds()
+	if elapsed >= MAX_TIME {
 		return true
 	}
+
 	return false
 }
 
-// tryPin 看给定的区块是否已经被读入某个缓存页,查看是否还有可用缓存页，然后将区块数据写入
 func (b *BufferManager) tryPin(blk *fm.BlockId) *Buffer {
-	buffer := b.findExistingBuffer(blk)
-	if buffer == nil {
-		buffer = b.chooseUnpinBuffer()
-		if buffer == nil {
+	//首先看给定的区块是否已经被读入某个缓存页
+	buff := b.findExistingBuffer(blk)
+	if buff == nil {
+		//查看是否还有可用缓存页，然后将区块数据写入
+		buff = b.chooseUnpinBuffer()
+		if buff == nil {
 			return nil
 		}
-		buffer.AssignToBlock(blk)
+		buff.AssignToBlock(blk)
 	}
-	//可用buffer数量 -1
-	if !buffer.IsPinned() {
-		b.num_available -= 1
+
+	if buff.IsPinned() == false {
+		b.num_available = b.num_available - 1
 	}
-	buffer.Pin()
-	return buffer
+
+	buff.Pin()
+	return buff
 }
 
-// findExistingBuffer 查看当前请求的区块是否已经被加载到了某个缓存页，如果是，那么直接返回即可
 func (b *BufferManager) findExistingBuffer(blk *fm.BlockId) *Buffer {
+	//查看当前请求的区块是否已经被加载到了某个缓存页，如果是，那么直接返回即可
 	for _, buffer := range b.buffer_pool {
 		block := buffer.Block()
 		if block != nil && block.Equals(blk) {
 			return buffer
 		}
 	}
+
 	return nil
 }
 
-// chooseUnpinBuffer 选取一个没有被使用的缓存页
 func (b *BufferManager) chooseUnpinBuffer() *Buffer {
+	//选取一个没有被使用的缓存页
 	for _, buffer := range b.buffer_pool {
 		if !buffer.IsPinned() {
 			return buffer

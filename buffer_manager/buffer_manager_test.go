@@ -19,7 +19,7 @@ func TestBufferManager(t *testing.T) {
 	n := p.GetInt(80)
 	p.SetInt(80, n+1)
 	buff1.SetModified(1, 0) //这里两个参数先不要管
-	buff1.UnPin()
+	buff1.Unpin()
 
 	buff2, err := bm.Pin(fm.NewBlockId("testfile", 2))
 	require.Nil(t, err)
