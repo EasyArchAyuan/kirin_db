@@ -6,7 +6,7 @@ import (
 	lg "log_manager"
 )
 
-// StartRecord start 记录
+// StartRecord start 记录：<START, 0>
 type StartRecord struct {
 	tx_num      uint64
 	log_manager *lg.LogManager
