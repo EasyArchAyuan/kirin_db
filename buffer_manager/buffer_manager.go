@@ -114,7 +114,7 @@ func (b *BufferManager) findExistingBuffer(blk *fm.BlockId) *Buffer {
 	//查看当前请求的区块是否已经被加载到了某个缓存页，如果是，那么直接返回即可
 	for _, buffer := range b.buffer_pool {
 		block := buffer.Block()
-		if block != nil && block.Equals(blk) {
+		if block != nil && block.Equal(blk) {
 			return buffer
 		}
 	}
