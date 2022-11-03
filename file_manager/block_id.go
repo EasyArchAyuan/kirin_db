@@ -5,9 +5,8 @@ import (
 	"fmt"
 )
 
-// BlockId 区块的抽象,对应二进制文件某个位置的一块连续内存的记录
 type BlockId struct {
-	file_name string //对应磁盘二进制文件
+	file_name string //对应磁盘的二进制文件
 	blk_num   uint64 //二进制文件中区块的标号
 }
 
@@ -26,8 +25,8 @@ func (b *BlockId) Number() uint64 {
 	return b.blk_num
 }
 
-func (b *BlockId) Equals(other *BlockId) bool {
-	return b.file_name == other.FileName() && b.blk_num == other.blk_num
+func (b *BlockId) Equal(other *BlockId) bool {
+	return b.file_name == other.file_name && b.blk_num == other.blk_num
 }
 
 func asSha256(o interface{}) string {

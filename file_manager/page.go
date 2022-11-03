@@ -1,8 +1,9 @@
 package file_manager
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+)
 
-// Page 让数据库系统分配一块内存，然后将数据从二进制文件读取后存储在内存中
 type Page struct {
 	buffer []byte
 }
@@ -30,20 +31,21 @@ func uint64ToByteArray(val uint64) []byte {
 	binary.LittleEndian.PutUint64(b, val)
 	return b
 }
+
 func (p *Page) SetInt(offset uint64, val uint64) {
 	b := uint64ToByteArray(val)
 	copy(p.buffer[offset:], b)
 }
 
 func (p *Page) GetBytes(offset uint64) []byte {
-	l := binary.LittleEndian.Uint64(p.buffer[offset : offset+8]) //8个字节表示后续二进制数据长度
-	new_buf := make([]byte, l)
+	len := binary.LittleEndian.Uint64(p.buffer[offset : offset+8]) //读取数组长度
+	new_buf := make([]byte, len)
 	copy(new_buf, p.buffer[offset+8:])
 	return new_buf
 }
 
 func (p *Page) SetBytes(offset uint64, b []byte) {
-	//首先写入数据的长度, 再写入数组内容
+	//首先写入数组的长度，然后再写入数组内容
 	length := uint64(len(b))
 	len_buf := uint64ToByteArray(length)
 	copy(p.buffer[offset:], len_buf) //写入长度
@@ -62,8 +64,8 @@ func (p *Page) SetString(offset uint64, s string) {
 
 func (p *Page) MaxLengthForString(s string) uint64 {
 	//hello,世界 长度13
-	bs := []byte(s)  //返回字符串相对于字节数组的长度
-	uint64_size := 8 //存储字符串时预先存储其长度，也就是uint64,它占了8个字节
+	bs := []byte(s)
+	uint64_size := 8
 	return uint64(uint64_size + len(bs))
 }
 

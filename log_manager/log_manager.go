@@ -19,10 +19,8 @@ type LogManager struct {
 	mu             sync.Mutex      //互斥锁
 }
 
-// 日志末尾追加写
 func (l *LogManager) appendNewBlock() (*fm.BlockId, error) {
-	//当缓冲器用完后调用该接口分配新内存
-	blk, err := l.file_manager.Append(l.log_file) //在日志二进制文件末尾添加一个区块
+	blk, err := l.file_manager.Append(l.log_file)
 	if err != nil {
 		return nil, err
 	}
@@ -32,10 +30,7 @@ func (l *LogManager) appendNewBlock() (*fm.BlockId, error) {
 		写入头8个字节
 	*/
 	l.log_page.SetInt(0, uint64(l.file_manager.BlockSize()))
-	_, err = l.file_manager.Write(&blk, l.log_page)
-	if err != nil {
-		return nil, err
-	}
+	l.file_manager.Write(&blk, l.log_page)
 	return &blk, nil
 }
 
@@ -53,36 +48,27 @@ func NewLogManager(file_manager *fm.FileManager, log_file string) (*LogManager, 
 		return nil, err
 	}
 
-	if log_size == 0 {
+	if log_size == 0 { //如果文件为空则添加新区块
 		blk, err := log_mgr.appendNewBlock()
 		if err != nil {
 			return nil, err
 		}
 		log_mgr.current_blk = blk
-	} else {
+	} else { //文件有数据，则在文件末尾的区块读入内存，最新的日志总会存储在文件末尾
 		log_mgr.current_blk = fm.NewBlockId(log_mgr.log_file, log_size-1)
-		_, err := file_manager.Read(log_mgr.current_blk, log_mgr.log_page)
-		if err != nil {
-			return nil, err
-		}
+		file_manager.Read(log_mgr.current_blk, log_mgr.log_page)
 	}
 
 	return &log_mgr, nil
 }
 
-func (l *LogManager) Flush() error {
-	//将当前日志写入磁盘
-	_, err := l.file_manager.Write(l.current_blk, l.log_page)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (l *LogManager) FlushByLSN(lsn uint64) error {
+	/*
+		将给定编号及其之前的日志写入磁盘，注意这里会把与给定日志在同一个区块，也就是Page中的
+		日志也写入磁盘。例如调用FlushLSN(65)表示把编号65及其之前的日志写入磁盘，如果编号为
+		66,67的日志也跟65在同一个Page里，那么它们也会被写入磁盘
+	*/
 	if lsn > l.last_saved_lsn {
-		//将当前日志写入磁盘
 		err := l.Flush()
 		if err != nil {
 			return err
@@ -93,18 +79,27 @@ func (l *LogManager) FlushByLSN(lsn uint64) error {
 	return nil
 }
 
+func (l *LogManager) Flush() error {
+	//将当前区块数据写入写入磁盘
+	_, err := l.file_manager.Write(l.current_blk, l.log_page)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (l *LogManager) Append(log_record []byte) (uint64, error) {
 	//添加日志
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	//获得可写入的底部偏移
-	boundary := l.log_page.GetInt(0)
+	boundary := l.log_page.GetInt(0) //获得可写入的底部偏移
 	record_size := uint64(len(log_record))
 	bytes_need := record_size + UINT64_LEN
 	var err error
-	if int(boundary-bytes_need) < UINT64_LEN {
-		//当前容量不够,现将当前日志写入磁盘
+	if int(boundary-bytes_need) < int(UINT64_LEN) {
+		//当前容量不够,先将当前日志写入磁盘
 		err = l.Flush()
 		if err != nil {
 			return l.latest_lsn, err
@@ -127,6 +122,7 @@ func (l *LogManager) Append(log_record []byte) (uint64, error) {
 }
 
 func (l *LogManager) Iterator() *LogIterator {
+	//生成日志遍历器
 	l.Flush()
 	return NewLogIterator(l.file_manager, l.current_blk)
 }

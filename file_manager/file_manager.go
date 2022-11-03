@@ -1,7 +1,6 @@
 package file_manager
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,24 +24,24 @@ func NewFileManager(db_directory string, block_size uint64) (*FileManager, error
 	}
 
 	if _, err := os.Stat(db_directory); os.IsNotExist(err) {
-		//目录不存在则先创建目录
+		//目录不存在则生成
 		file_manager.is_new = true
-		err = os.Mkdir(db_directory, os.ModeDir)
+		err := os.Mkdir(db_directory, 0777)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		//目录存在,则先清除目录下的临时文件
-		err := filepath.Walk(db_directory, func(path string, info fs.FileInfo, err error) error {
+		//如果目录已经存在，把目录下的临时文件删除,
+		err := filepath.Walk(db_directory, func(path string, info os.FileInfo, err error) error {
 			mode := info.Mode()
-			if mode.IsRegular() && strings.HasPrefix(info.Name(), "temp") {
-				//删除临时文件
-				err := os.Remove(filepath.Join(path, info.Name()))
-				if err != nil {
-					return err
+			if mode.IsRegular() {
+				name := info.Name()
+				if strings.HasPrefix(name, "temp") {
+					//删除临时文件
+					os.Remove(filepath.Join(path, name))
 				}
-
 			}
+
 			return nil
 		})
 
@@ -50,6 +49,7 @@ func NewFileManager(db_directory string, block_size uint64) (*FileManager, error
 			return nil, err
 		}
 	}
+
 	return &file_manager, nil
 }
 
@@ -60,27 +60,27 @@ func (f *FileManager) getFile(file_name string) (*os.File, error) {
 		return nil, err
 	}
 
-	f.open_files[path] = file
-
-	return file, err
+	f.open_files[file_name] = file
+	return file, nil
 }
 
 func (f *FileManager) Read(blk *BlockId, p *Page) (int, error) {
 	f.mu.Lock()
-	defer f.mu.Unlock() //defer遵循先进后出的原则,后面的函数只有在当前函数执行完毕后才能执行
+	defer f.mu.Unlock()
 
 	file, err := f.getFile(blk.FileName())
 	if err != nil {
 		return 0, err
 	}
+
 	defer file.Close()
 
 	count, err := file.ReadAt(p.contents(), int64(blk.Number()*f.block_size))
 	if err != nil {
 		return 0, err
 	}
-	return count, nil
 
+	return count, nil
 }
 
 func (f *FileManager) Write(blk *BlockId, p *Page) (int, error) {
@@ -91,13 +91,15 @@ func (f *FileManager) Write(blk *BlockId, p *Page) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	defer file.Close()
 
-	n, err := file.WriteAt(p.contents(), int64(blk.Number()*f.block_size))
+	count, err := file.WriteAt(p.contents(), int64(blk.Number()*f.block_size))
 	if err != nil {
 		return 0, err
 	}
-	return n, nil
+
+	return count, nil
 }
 
 func (f *FileManager) Size(file_name string) (uint64, error) {
@@ -121,16 +123,17 @@ func (f *FileManager) Append(file_name string) (BlockId, error) {
 		return BlockId{}, err
 	}
 
-	blk := NewBlockId(file_name, new_block_num)
+	blk := NewBlockId(file_name, uint64(new_block_num))
 	file, err := f.getFile(blk.FileName())
 	if err != nil {
 		return BlockId{}, err
 	}
+	defer file.Close()
 
 	b := make([]byte, f.block_size)
-	_, err = file.WriteAt(b, int64(blk.Number()*f.block_size)) //读入空数据相当于扩大文件长度
+	_, err = file.WriteAt(b, int64(blk.Number()*f.block_size)) //在文件末尾扩大
 	if err != nil {
-		return BlockId{}, nil
+		return BlockId{}, err
 	}
 
 	return *blk, nil
