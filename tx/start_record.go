@@ -6,7 +6,6 @@ import (
 	lg "log_manager"
 )
 
-// StartRecord start 记录：<START, 0>
 type StartRecord struct {
 	tx_num      uint64
 	log_manager *lg.LogManager
@@ -14,8 +13,9 @@ type StartRecord struct {
 
 func NewStartRecord(p *fm.Page, log_manager *lg.LogManager) *StartRecord {
 	//p的头8字节对应日志的类型，从偏移8开始对应交易号
+	tx_num := p.GetInt(UINT64_LENGTH)
 	return &StartRecord{
-		tx_num:      p.GetInt(UINT64_LENGTH),
+		tx_num:      tx_num,
 		log_manager: log_manager,
 	}
 }
@@ -28,11 +28,12 @@ func (s *StartRecord) TxNumber() uint64 {
 	return s.tx_num
 }
 
-func (s *StartRecord) ToString() string {
-	return fmt.Sprintf("<START %d>", s.tx_num)
+func (s *StartRecord) Undo(_ TransactionInterface) {
+	//该记录没有回滚操作的必要
 }
 
-func (s *StartRecord) Undo() {
+func (s *StartRecord) ToString() string {
+	return fmt.Sprintf("<START %d>", s.tx_num)
 }
 
 func (s *StartRecord) WriteToLog() (uint64, error) {

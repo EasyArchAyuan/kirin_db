@@ -43,8 +43,8 @@ func NewSetStringRecord(p *fm.Page) *SetStringRecord {
 	val := p.GetString(vpos) //将日志中的字符串再次写入给定位置
 
 	return &SetStringRecord{
-		tx_num: p.GetInt(tx_num),
-		offset: p.GetInt(offset),
+		tx_num: tx_num,
+		offset: offset,
 		val:    val,
 		blk:    blk,
 	}
@@ -64,10 +64,9 @@ func (s *SetStringRecord) ToString() string {
 
 func (s *SetStringRecord) Undo(tx TransactionInterface) {
 	tx.Pin(s.blk)
-	//回滚原来的字符串
+	//将原来的字符串写回去
 	tx.SetString(s.blk, s.offset, s.val, false)
 	tx.UnPin(s.blk)
-
 }
 
 func WriteSetStringLog(log_manager *lg.LogManager, tx_num uint64,

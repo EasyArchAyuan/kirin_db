@@ -19,14 +19,10 @@ func makeRecord(s string, n uint64) []byte {
 }
 
 func createRecords(lm *LogManager, start uint64, end uint64) {
-	for i := start; i <=
-		end; i++ {
+	for i := start; i <= end; i++ {
 		//一条记录包含两个信息，一个是字符串record 一个是数值i
 		rec := makeRecord(fmt.Sprintf("record%d", i), i)
-		_, err := lm.Append(rec)
-		if err != nil {
-			return
-		}
+		lm.Append(rec)
 	}
 }
 
@@ -52,10 +48,7 @@ func TestLogManager(t *testing.T) {
 	}
 
 	createRecords(log_manager, 36, 70)
-	err = log_manager.FlushByLSN(65)
-	if err != nil {
-		return
-	}
+	log_manager.FlushByLSN(65)
 
 	iter = log_manager.Iterator()
 	rec_num = uint64(70)

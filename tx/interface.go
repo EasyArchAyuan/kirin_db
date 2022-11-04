@@ -1,6 +1,9 @@
 package tx
 
-import fm "file_manager"
+import (
+	fm "file_manager"
+	"math"
+)
 
 // TransactionInterface 事务对象的接口
 type TransactionInterface interface {
@@ -9,13 +12,13 @@ type TransactionInterface interface {
 	Recover()
 	Pin(blk *fm.BlockId)
 	UnPin(blk *fm.BlockId)
-	GetInt(blk *fm.BlockId, offset uint64) uint64
-	SetInt(blk *fm.BlockId, offset uint64, val uint64, okToLog bool)
-	GetString(blk *fm.BlockId, offset uint64) string
-	SetString(blk *fm.BlockId, offset uint64, val string, okToLog bool)
+	GetInt(blk *fm.BlockId, offset uint64) (int64, error)
+	GetString(blk *fm.BlockId, offset uint64) (string, error)
+	SetInt(blk *fm.BlockId, offset uint64, val int64, okToLog bool) error
+	SetString(blk *fm.BlockId, offset uint64, val string, okToLog bool) error
 	AvailableBuffers() uint64
-	Size(filename string) uint64
-	Append(filename string) uint64
+	Size(filename string) (uint64, error)
+	Append(filename string) (*fm.BlockId, error)
 	BlockSize() uint64
 }
 
@@ -33,12 +36,18 @@ const (
 
 const (
 	UINT64_LENGTH = 8
-	END_OF_FILE   = -1
+	END_OF_FILE   = math.MaxUint64
 )
 
 type LogRecordInterface interface {
 	Op() RECORD_TYPE              //返回记录的类别
-	TxNumber() uint32             //对应事务的编号
+	TxNumber() uint64             //对应交易的号码
 	Undo(tx TransactionInterface) //回滚操作
-	ToString() string             //获取记录的字符串内容
+	ToString() string             //获得记录的字符串内容
+}
+
+type LockTableInterface interface {
+	SLock(blk *fm.BlockId)  //增加共享锁
+	XLock(blk *fm.BlockId)  //增加互斥锁
+	UnLock(blk *fm.BlockId) //解除锁
 }

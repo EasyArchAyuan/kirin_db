@@ -6,7 +6,6 @@ import (
 )
 
 func TestFileManager(t *testing.T) {
-	//为磁盘上创建对应目录
 	fm, _ := NewFileManager("file_test", 400)
 	blk := NewBlockId("testFile", 2)
 	p1 := NewPageBySize(fm.BlockSize())
@@ -17,19 +16,13 @@ func TestFileManager(t *testing.T) {
 	pos2 := pos1 + size
 	val := uint64(345)
 	p1.SetInt(pos2, val)
-	_, err := fm.Write(blk, p1)
-	if err != nil {
-		return
-	}
+
+	fm.Write(blk, p1)
 
 	p2 := NewPageBySize(fm.BlockSize())
-	_, err = fm.Read(blk, p2)
-	if err != nil {
-		return
-	}
+	fm.Read(blk, p2)
 
 	require.Equal(t, val, p2.GetInt(pos2))
 
 	require.Equal(t, s, p2.GetString(pos1))
-
 }

@@ -21,6 +21,7 @@ func NewLogIterator(file_manager *fm.FileManager, blk *fm.BlockId) *LogIterator 
 		blk:          blk,
 	}
 
+	//现将给定区块的数据读入
 	it.p = fm.NewPageBySize(file_manager.BlockSize())
 	err := it.moveToBlock(blk)
 	if err != nil {
@@ -30,11 +31,13 @@ func NewLogIterator(file_manager *fm.FileManager, blk *fm.BlockId) *LogIterator 
 }
 
 func (l *LogIterator) moveToBlock(blk *fm.BlockId) error {
+	//打开存储日志数据的文件，遍历到给定区块，将数据读入内存
 	_, err := l.file_manager.Read(blk, l.p)
 	if err != nil {
 		return err
 	}
 
+	//获得日志的起始地址
 	l.boundary = l.p.GetInt(0)
 	l.current_pos = l.boundary
 	return nil
@@ -42,12 +45,9 @@ func (l *LogIterator) moveToBlock(blk *fm.BlockId) error {
 
 func (l *LogIterator) Next() []byte {
 	//先读取最新日志，也就是编号大的，然后依次读取编号小的
-	if l.current_pos == l.file_manager.BlockSize() {
+	if l.current_pos == uint64(l.file_manager.BlockSize()) {
 		l.blk = fm.NewBlockId(l.blk.FileName(), l.blk.Number()-1)
-		err := l.moveToBlock(l.blk)
-		if err != nil {
-			return nil
-		}
+		l.moveToBlock(l.blk)
 	}
 
 	record := l.p.GetBytes(l.current_pos)
@@ -57,5 +57,7 @@ func (l *LogIterator) Next() []byte {
 }
 
 func (l *LogIterator) HasNext() bool {
-	return l.current_pos < l.file_manager.BlockSize() || l.blk.Number() > 0
+	//如果当前偏移位置小于区块大那么还有数据可以从当前区块读取
+	//如果当前区块数据已经全部读完，但是区块号不为0，那么可以读取前面区块获得老的日志数据
+	return l.current_pos < uint64(l.file_manager.BlockSize()) || l.blk.Number() > 0
 }

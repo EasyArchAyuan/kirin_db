@@ -28,8 +28,8 @@ func NewSetIntRecord(p *fm.Page) *SetIntRecord {
 	val := p.GetInt(vpos) //将日志中的字符串再次写入给定位置
 
 	return &SetIntRecord{
-		tx_num: p.GetInt(tx_num),
-		offset: p.GetInt(offset),
+		tx_num: tx_num,
+		offset: offset,
 		val:    val,
 		blk:    blk,
 	}
@@ -44,12 +44,13 @@ func (s *SetIntRecord) TxNumber() uint64 {
 }
 
 func (s *SetIntRecord) ToString() string {
-	return fmt.Sprintf("<SETINT %d %d %d %s>", s.tx_num, s.blk.Number(), s.offset, s.val)
+	return fmt.Sprintf("<SETINT %d %d %d %d>", s.tx_num, s.blk.Number(),
+		s.offset, s.val)
 }
 
 func (s *SetIntRecord) Undo(tx TransactionInterface) {
 	tx.Pin(s.blk)
-	tx.SetInt(s.blk, s.offset, s.val, false) //将原来的字符串写回去
+	tx.SetInt(s.blk, s.offset, int64(s.val), false) //将原来的字符串写回去
 	tx.UnPin(s.blk)
 }
 

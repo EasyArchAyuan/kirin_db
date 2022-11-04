@@ -6,6 +6,7 @@ import (
 )
 
 func TestSetAndGetInt(t *testing.T) {
+	//require.Equal(t, 1, 2)
 	page := NewPageBySize(256)
 	val := uint64(1234)
 	offset := uint64(23) //指定写入偏移量
@@ -17,6 +18,7 @@ func TestSetAndGetInt(t *testing.T) {
 }
 
 func TestSetAndGetByteArray(t *testing.T) {
+	//require.Equal(t, 1, 2)
 	page := NewPageBySize(256)
 	bs := []byte{1, 2, 3, 4, 5, 6}
 	offset := uint64(23) //指定写入偏移量

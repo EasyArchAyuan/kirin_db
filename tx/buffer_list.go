@@ -39,7 +39,7 @@ func (b *BufferList) Pin(blk *fm.BlockId) error {
 
 func (b *BufferList) Unpin(blk *fm.BlockId) {
 	buff, ok := b.buffers[*blk]
-	if ok {
+	if !ok {
 		return
 	}
 

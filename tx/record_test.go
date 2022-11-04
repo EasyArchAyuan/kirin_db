@@ -56,8 +56,8 @@ func TestSetStringRecord(t *testing.T) {
 
 	pp.SetString(offset, "modify string 1")
 	pp.SetString(offset, "modify string 2")
-	//txStub := NewTxStub(pp)
-	//setStrRec.Undo(txStub)
+	txStub := NewTxStub(pp)
+	setStrRec.Undo(txStub)
 	recover_str := pp.GetString(offset)
 
 	require.Equal(t, recover_str, str)
@@ -86,8 +86,8 @@ func TestSetIntRecord(t *testing.T) {
 
 	pp.SetInt(offset, 22)
 	pp.SetInt(offset, 33)
-	//txStub := NewTxStub(pp)
-	//setIntRec.Undo(txStub)
+	txStub := NewTxStub(pp)
+	setIntRec.Undo(txStub)
 	recover_val := pp.GetInt(offset)
 
 	require.Equal(t, recover_val, val)
