@@ -32,6 +32,9 @@ func (s *StartRecord) ToString() string {
 	return fmt.Sprintf("<START %d>", s.tx_num)
 }
 
+func (s *StartRecord) Undo() {
+}
+
 func (s *StartRecord) WriteToLog() (uint64, error) {
 	//日志写的不是字符串而是二进制数值
 	record := make([]byte, 2*UINT64_LENGTH)

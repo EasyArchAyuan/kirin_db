@@ -29,6 +29,9 @@ func (r *CommitRecord) ToString() string {
 	return fmt.Sprintf("<COMMIT %d>", r.tx_num)
 }
 
+func (c *CommitRecord) Undo() {
+}
+
 func WriteCommitkRecordLog(lgmr *lg.LogManager, tx_num uint64) (uint64, error) {
 	rec := make([]byte, 2*UINT64_LENGTH)
 	p := fm.NewPageByBytes(rec)
