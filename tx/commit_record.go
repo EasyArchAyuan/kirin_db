@@ -29,7 +29,7 @@ func (r *CommitRecord) ToString() string {
 	return fmt.Sprintf("<COMMIT %d>", r.tx_num)
 }
 
-func (c *CommitRecord) Undo() {
+func (c *CommitRecord) Undo(_ TransactionInterface) {
 }
 
 func WriteCommitkRecordLog(lgmr *lg.LogManager, tx_num uint64) (uint64, error) {

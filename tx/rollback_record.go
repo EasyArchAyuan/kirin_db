@@ -28,7 +28,7 @@ func (r *RollBackRecord) TxNumber() uint64 {
 func (r *RollBackRecord) ToString() string {
 	return fmt.Sprintf("<ROLLBACK %d>", r.tx_num)
 }
-func (r *RollBackRecord) Undo() {
+func (r *RollBackRecord) Undo(_ TransactionInterface) {
 }
 
 func WriteRollBackLog(lgmr *lg.LogManager, tx_num uint64) (uint64, error) {

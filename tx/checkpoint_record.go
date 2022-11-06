@@ -22,7 +22,7 @@ func (c *CheckPointRecord) TxNumber() uint64 {
 	return math.MaxUint64 //它没有对应的事务ID
 }
 
-func (c *CheckPointRecord) Undo() {
+func (c *CheckPointRecord) Undo(_ TransactionInterface) {
 }
 
 func (c *CheckPointRecord) ToString() string {
