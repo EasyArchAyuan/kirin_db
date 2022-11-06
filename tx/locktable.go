@@ -112,7 +112,7 @@ func (l *LockTable) initWaitingOnBlk(blk *fm.BlockId) {
 
 func (l *LockTable) SLock(blk *fm.BlockId) error {
 	l.method_lock.Lock()
-	defer l.method_lock.Lock()
+	defer l.method_lock.Unlock()
 
 	l.initWaitingOnBlk(blk)
 	start := time.Now()
