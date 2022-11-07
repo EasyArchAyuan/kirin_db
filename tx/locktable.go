@@ -59,8 +59,10 @@ func (l *LockTable) waitGivenTimeOut(blk *fm.BlockId) {
 	select {
 	//将线程挂起给定时间
 	case <-time.After(MAX_WAITING_TIME * time.Second):
+		fmt.Println("routine wake up for timeout")
 	//将线程唤醒
 	case <-l.notify_chan[*blk]:
+		fmt.Println("routine wake up by notify channel")
 	}
 	//唤起后加上方法锁
 	l.method_lock.Lock()
@@ -90,7 +92,6 @@ func (l *LockTable) notifyAll(blk *fm.BlockId) {
 			l.method_lock.Unlock()
 			s = fmt.Sprintf("create notify channel for %v\n", blk_unlock)
 			fmt.Print(s)
-
 		}(*blk, mark)
 	} else {
 		s = fmt.Sprintf("channel for %v is already closed\n", *blk)
