@@ -59,14 +59,14 @@ func (l *Layout) lengthInBytes(field_name string) int {
 	}
 }
 
-func (l Layout) Schema() SchemaInterface {
+func (l *Layout) Schema() SchemaInterface {
 	return l.schema
 }
 
-func (l Layout) Offset(field_name string) int {
+func (l *Layout) Offset(field_name string) int {
 	return l.offsets[field_name]
 }
 
-func (l Layout) SlotSize() int {
+func (l *Layout) SlotSize() int {
 	return l.slot_size
 }
