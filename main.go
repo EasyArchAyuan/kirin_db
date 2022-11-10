@@ -2,54 +2,71 @@ package main
 
 import (
 	bmg "buffer_manager"
-	//"encoding/binary"
 	fm "file_manager"
 	"fmt"
 	lm "log_manager"
+	"math/rand"
+	record_mgr "record_manager"
 	"tx"
 )
 
 func main() {
-	file_manager, _ := fm.NewFileManager("txtest", 400)
-	log_manager, _ := lm.NewLogManager(file_manager, "logfile")
+	file_manager, _ := fm.NewFileManager("recordtest", 400)
+	log_manager, _ := lm.NewLogManager(file_manager, "logfile.log")
 	buffer_manager := bmg.NewBufferManager(file_manager, log_manager, 3)
 
-	tx1 := tx.NewTransaction(file_manager, log_manager, buffer_manager)
-	blk := fm.NewBlockId("testfile", 1)
-	tx1.Pin(blk)
-	//设置log为false，因为一开始数据没有任何意义，因此不能进行日志记录
-	tx1.SetInt(blk, 80, 1, false)
-	tx1.SetString(blk, 40, "one", false)
-	tx1.Commit() //执行回滚操作后，数据会还原到这里写入的内容
+	tx := tx.NewTransaction(file_manager, log_manager, buffer_manager)
+	sch := record_mgr.NewSchema()
 
-	tx2 := tx.NewTransaction(file_manager, log_manager, buffer_manager)
-	tx2.Pin(blk)
-	ival, _ := tx2.GetInt(blk, 80)
-	sval, _ := tx2.GetString(blk, 40)
-	fmt.Println("initial value at location 80 = ", ival)
-	fmt.Println("initial value at location 40 = ", sval)
-	new_ival := ival + 1
-	new_sval := sval + "!"
-	tx2.SetInt(blk, 80, new_ival, true)
-	tx2.SetString(blk, 40, new_sval, true)
-	tx2.Commit() //尝试写入新的数据
+	sch.AddIntField("A")
+	sch.AddStringField("B", 9)
+	layout := record_mgr.NewLayoutWithSchema(sch)
+	for _, field_name := range layout.Schema().Fields() {
+		offset := layout.Offset(field_name)
+		fmt.Printf("%s has offset %d\n", field_name, offset)
+	}
 
-	tx3 := tx.NewTransaction(file_manager, log_manager, buffer_manager)
-	tx3.Pin(blk)
-	ival, _ = tx3.GetInt(blk, 80)
-	sval, _ = tx3.GetString(blk, 40)
-	fmt.Println("new ivalue at location 80: ", ival)
-	fmt.Println("new svalue at location 40: ", sval)
-	tx3.SetInt(blk, 80, 999, true)
-	ival, _ = tx3.GetInt(blk, 80)
-	//写入数据后检查是否写入正确
-	fmt.Println("pre-rollback ivalue at location 80: ", ival)
-	tx3.RollBack() //执行回滚操作，并确定回滚到第一次写入内容
+	blk, err := tx.Append("testfile")
+	if err != nil {
+		err_str := fmt.Sprintf("err : %v\n", err)
+		panic(err_str)
+	}
+	tx.Pin(blk)
+	rp := record_mgr.NewRecordPage(tx, blk, record_mgr.LayoutInterface(layout))
+	rp.Format()
+	fmt.Println("Filling the page with random records")
+	slot := rp.InsertAfter(-1) //找到第一条可用插槽
+	for slot >= 0 {
+		n := rand.Intn(50)
+		rp.SetInt(slot, "A", n)                          //找到可用插槽后随机设定字段A的值
+		rp.SetString(slot, "B", fmt.Sprintf("rec%d", n)) //设定字段B
+		fmt.Printf("inserting into slot :%d :{ %d , rec%d}\n", slot, n, n)
+		slot = rp.InsertAfter(slot) //查找当前插槽之后可用的插槽
+	}
 
-	tx4 := tx.NewTransaction(file_manager, log_manager, buffer_manager)
-	tx4.Pin(blk)
-	ival, _ = tx4.GetInt(blk, 80)
-	fmt.Println("post-rollback at location 80 = ", ival)
-	tx4.Commit() //执行到这里时，输出内容应该与第一次写入内容相同
+	fmt.Println("Deleted these records with A-values < 25.")
+	count := 0
+	slot = rp.NextAfter(-1)
+	for slot >= 0 {
+		a := rp.GetInt(slot, "A")
+		b := rp.GetString(slot, "B")
+		if a < 25 {
+			count += 1
+			fmt.Printf("slot %d: {%d, %s}\n", slot, a, b)
+			rp.Delete(slot)
+		}
+		slot = rp.NextAfter(slot)
+	}
+	fmt.Printf("%d values under 25 were deleted.\n", count)
+	fmt.Println("Here are the remaining records")
+	slot = rp.NextAfter(-1)
+	for slot >= 0 {
+		a := rp.GetInt(slot, "A")
+		b := rp.GetString(slot, "B")
+		fmt.Printf("slot %d : {%d, %s}\n", slot, a, b)
+		slot = rp.NextAfter(slot)
+	}
 
+	tx.UnPin(blk)
+	tx.Commit()
 }
