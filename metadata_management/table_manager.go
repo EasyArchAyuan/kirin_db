@@ -14,14 +14,13 @@ type TableManager struct {
 }
 
 func (t TableManager) CreateTable(tblName string, sch *rm.Schema, tx *tx.Transaction) {
-	//TODO implement me
-	panic("implement me")
+
+	panic("todo")
 }
 
 func (t TableManager) GetLayout(tblName string, tx *tx.Transaction) *rm.Layout {
 
-	//TODO implement me
-	panic("implement me")
+	panic("todo")
 }
 
 func NewTableManager(isNew bool, tx *tx.Transaction) *TableManager {
